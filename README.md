@@ -1,2 +1,2 @@
-# BlenderScripts
-My private blender scripts
+# Blender Scripts
+This is a collection of various little scripts helping me through the day.
