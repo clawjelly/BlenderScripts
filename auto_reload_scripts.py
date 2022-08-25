@@ -156,8 +156,12 @@ class VIEW3D_PT_script_reloader(bpy.types.Panel):
     bl_category="Text"
     bl_label="Script Reloader"
 
-    def draw(self, context):
+    @classmethod
+    def poll(cls, context):
+        # return context.active_object is not None
+        return len(bpy.data.texts)>0
 
+    def draw(self, context):
         layout = self.layout
         box=layout.box()
         box.operator("scripts.script_reloader", text="Toggle Script Reloader")
@@ -165,12 +169,17 @@ class VIEW3D_PT_script_reloader(bpy.types.Panel):
         box.label(text=status)
         box.prop(context.scene.reloader_settings, "run_script")
         box.prop(context.scene.reloader_settings, "scripts")
-        layout.separator()
-        box=layout.box()
-        box.label(text=f"\"{bpy.data.texts[bpy.context.scene.reloader_settings.scripts].filepath}\"")
-        row=box.row()
-        row.operator("scripts.relative_script_path", text="Relative")
-        row.operator("scripts.absolute_script_path", text="Absolute")
+        if context.scene.reloader_settings.scripts!="":
+            tfile = bpy.data.texts[context.scene.reloader_settings.scripts]
+            if tfile!=None:
+                fpath=tfile.filepath
+                layout.separator()
+                box=layout.box()
+                box.label(text=f"Script Filepath:")
+                box.label(text=f"{fpath}")
+                row=box.row()
+                row.operator("scripts.relative_script_path", text="Relative")
+                row.operator("scripts.absolute_script_path", text="Absolute")
 
 blender_classes=[
     OLI_PG_script_reloader,
