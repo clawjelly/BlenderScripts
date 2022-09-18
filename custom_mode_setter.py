@@ -18,7 +18,7 @@ bl_info={
 def custom_mode_setter(context, mode):
     obj = context.active_object
     # print(context.view_layer.objects.active)
-    print("OBJ: {} MODE: {} NUMBER: {}".format(obj, obj.mode, mode))
+    print(f"Object {obj.name} in mode {obj.mode} set to Mode number: {mode}")
     if obj.type=='ARMATURE':
         print("Armature!")
         if mode==1:
@@ -28,6 +28,17 @@ def custom_mode_setter(context, mode):
         elif mode==4:
             bpy.ops.object.mode_set(mode="OBJECT")
     elif obj.type=='MESH':
+        # In UV mode?
+        if context.area.type=="IMAGE_EDITOR" and bpy.context.scene.tool_settings.use_uv_select_sync == False:
+            print("Image Editor")
+            if mode==1:
+                bpy.ops.uv.select_mode(type='VERTEX')
+            if mode==2:
+                bpy.ops.uv.select_mode(type='EDGE')
+            if mode==3:
+                bpy.ops.uv.select_mode(type='FACE')
+            return
+        ### still in 
         if mode==1:
             bpy.ops.object.mode_set(mode="EDIT")
             bpy.ops.mesh.select_mode(type="VERT")
