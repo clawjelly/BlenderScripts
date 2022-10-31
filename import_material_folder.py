@@ -1,8 +1,10 @@
 from pathlib import Path
 import bpy
 
+file_types = [".jpg", ".png", ".tga"]
+
 tex_keywords = {
-    "ao": ["_ao", "ambientocclusion", "AmbientOcclusion", "ambientOcclusion"],
+    "ao": ["_ao", "_AO", "ambientocclusion", "AmbientOcclusion", "ambientOcclusion"],
     "diffuse": ["_diffuse", "basemap", "albedo", "Albedo", "_alb"],
     "roughness": ["roughness", "_rgh", "Roughness"],
     "normal": ["_nrm", "_normal", "NormalMap", "normalmap"],
@@ -21,7 +23,7 @@ def get_texture_files(rpath):
     for tfile in rpath.iterdir():
         if tfile.is_dir():
             continue
-        if tfile.suffix!=".jpg" and tfile.suffix!=".png":
+        if tfile.suffix not in file_types:
             continue
         for tkey, tids in tex_keywords.items():
             for tid in tids:
