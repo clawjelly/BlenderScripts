@@ -7,7 +7,7 @@ tex_keywords = {
     "roughness": ["roughness", "_rgh", "Roughness"],
     "normal": ["_nrm", "_normal", "NormalMap", "normalmap"],
     "height": ["_height", "HeightMap", "heightmap"],
-    "render": ["_render", "thumbnail", "Thumbnail"],
+    "thumbnail": ["_render", "thumbnail", "Thumbnail"],
     "reflection": ["_reflection", "_ref", "Reflection"],
     "metal": ["_met", "metalness", "Metalness"],
     "emission": ["_emi", "Emission", "emissive"]
