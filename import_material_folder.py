@@ -2,7 +2,7 @@ from pathlib import Path
 import bpy
 
 tex_keywords = {
-    "ao": ["_ao", "ambientocclusion", "AmbientOcclusion"],
+    "ao": ["_ao", "ambientocclusion", "AmbientOcclusion", "ambientOcclusion"],
     "diffuse": ["_diffuse", "basemap", "albedo", "Albedo", "_alb"],
     "roughness": ["roughness", "_rgh", "Roughness"],
     "normal": ["_nrm", "_normal", "NormalMap", "normalmap"],
@@ -158,6 +158,7 @@ def generate_material(matName, tfiles, markasset=False, convertnormals=True):
 if __name__ == '__main__':
     wm = bpy.data.window_managers[0]
 
+    # Put your filepath here:
     root = Path(r"H:\Files\Images\textures\Food")
 
     matPaths = list(p for p in root.iterdir() if p.is_dir())
@@ -170,6 +171,7 @@ if __name__ == '__main__':
         tfiles = get_texture_files(tpath)
         mat = generate_material(tpath.stem.replace("_", " "), tfiles, markasset=True, convertnormals=True)
         if mat.asset_data:
+            # Add your tags here by replacing and duplicating this line as many times as needed
             mat.asset_data.tags.new("Metal")
         wm.progress_update(tid)
 
