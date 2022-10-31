@@ -43,5 +43,6 @@ Some features:
 
 - Marks materials directly as assets so they can be used in blenders asset browser
 - Adds a converter for DirectX style normal maps to OpenGL normal maps
+- Adds a thumbnail image if there is one, otherwise generates automatic one.
 
 Still wip, use at your own risk!

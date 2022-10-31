@@ -76,12 +76,6 @@ def generate_material(matName, tfiles, markasset=False, convertnormals=True):
     if not output_node:
         assert("No output node?!!")
 
-    if markasset:
-        mat.asset_mark()
-        if "thumbnail" in tfiles:
-            with bpy.context.temp_override(id=mat):
-                bpy.ops.ed.lib_id_load_custom_preview(filepath=str(tfiles["thumbnail"]))
-
     # Diffuse
     if "diffuse" in tfiles:
         diftex = generate_texture_nodes(mat, tfiles["diffuse"], offset=(-500,900))
@@ -152,6 +146,15 @@ def generate_material(matName, tfiles, markasset=False, convertnormals=True):
         dispNode.inputs[2].default_value = 0.03
         mat.node_tree.links.new(heightTex.outputs[0], dispNode.inputs[0])
         mat.node_tree.links.new(dispNode.outputs[0], output_node.inputs[2])
+
+    if markasset:
+        mat.asset_mark()
+        if "thumbnail" in tfiles:
+            with bpy.context.temp_override(id=mat):
+                bpy.ops.ed.lib_id_load_custom_preview(filepath=str(tfiles["thumbnail"]))
+        else:
+            with bpy.context.temp_override(id=mat):
+                bpy.ops.ed.lib_id_generate_preview()
 
     return mat
 
