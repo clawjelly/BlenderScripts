@@ -19,6 +19,12 @@ Additional function is swapping the script path between relative and absolute pa
 
 ## import_material_folder.py
 
+![material_folder_importer](img/material_folder_importer.PNG)
+
+I made a little demo that demonstrates how it works:
+
+[Demo Video](https://youtu.be/O3Rofp_yQ3A)
+
 This imports a material/texture folder structure as materials into blender. Textures are identified by keyworks:
 
 ```python
@@ -41,8 +47,9 @@ Setup by adding your desired folder to the script, adapt the tags and start the 
 
 Some features:
 
-- Marks materials directly as assets so they can be used in blenders asset browser
-- Adds a converter for DirectX style normal maps to OpenGL normal maps
+- Marks materials directly as assets so they can be used in blenders asset browser.
+- Adds tags to asset.
+- Adds a converter for DirectX style normal maps to OpenGL normal maps.
 - Adds a thumbnail image if there is one, otherwise generates automatic one.
 
 Still wip, use at your own risk!

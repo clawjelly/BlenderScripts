@@ -1,5 +1,26 @@
-from pathlib import Path
+# -------------------------------------------------------------
+# Material Folder Importer
+# -------------------------------------------------------------
+# Version 0.2
+# -------------------------------------------------------------
+
+bl_info = {
+    "name": "Material Folder Importer",
+    "author": "Oliver Reischl <clawjelly@gmail.net>",
+    "version": (0, 2),
+    "blender": (3, 00, 0),
+    # "location": "View3D > Add > Mesh > New Object",
+    "description": "Adds some more functionality to the Asset Browser",
+    "doc_url": "https://github.com/clawjelly/BlenderScripts",
+    "category": "Assets",
+}
+
+import json
 import bpy
+from pathlib import Path
+from bpy_extras.io_utils import unique_name, ExportHelper, ImportHelper
+from bpy.props import StringProperty, BoolProperty, EnumProperty, PointerProperty, CollectionProperty
+from bpy.types import PropertyGroup
 
 file_types = [".jpg", ".png", ".tga"]
 
@@ -31,7 +52,7 @@ def get_texture_files(rpath):
                     tfiles[tkey]=tfile
                     break
     return tfiles
-
+    
 def get_node_by_id(mat, idname):
     for key, node in  mat.node_tree.nodes.items():
         if node.bl_idname == idname:
@@ -160,24 +181,138 @@ def generate_material(matName, tfiles, markasset=False, convertnormals=True):
 
     return mat
 
-if __name__ == '__main__':
-    wm = bpy.data.window_managers[0]
+class OLI_PG_material_importer_settings(PropertyGroup):
 
-    # Put your filepath here:
-    root = Path(r"H:\Files\Images\textures\Food")
+    path : StringProperty(
+        name="Folder",
+        description="Path to root material directory",
+        default="",
+        maxlen=1024,
+        subtype='DIR_PATH')
 
-    matPaths = list(p for p in root.iterdir() if p.is_dir())
-    wm.progress_begin(0, len(matPaths))
+    mark_asset: BoolProperty(
+        default=True, 
+        description="Create a material asset"
+        )
 
-    # tpath = Path(r"H:\Files\Images\textures\SciFi\Physical_3_Sci-Fi_4K\crt_display_screens_turned_on_28_99")
-    # tid=1
-    # if True:
-    for tid, tpath in enumerate(matPaths):
-        tfiles = get_texture_files(tpath)
-        mat = generate_material(tpath.stem.replace("_", " "), tfiles, markasset=True, convertnormals=True)
-        if mat.asset_data:
-            # Add your tags here by replacing and duplicating this line as many times as needed
-            mat.asset_data.tags.new("Metal")
-        wm.progress_update(tid)
+    convert_from_directx: BoolProperty(
+        default=True,
+        description="Add nodes to correct DirectX style normalmaps."
+        )
 
-    wm.progress_end()
+    tag1 : StringProperty(
+        name="Adds an asset tag",
+        default=""
+        )
+
+    tag2 : StringProperty(
+        name="Adds an asset tag",
+        default=""
+        )
+
+    tag3 : StringProperty(
+        name="Adds an asset tag",
+        default=""
+        )
+
+class OLI_OT_import_material_folder(bpy.types.Operator):
+    """ Import a whole folder with a subfolder each
+    for one material. Tries to assign the textures to
+    their right slot according to their filenames."""
+    bl_idname = "olitools.import_material_folder"
+    bl_label = "Import Folder"
+
+    filepath: StringProperty()
+    filename:  StringProperty()
+    directory:  StringProperty()
+
+    # def __init__(self):
+    #     pass
+
+    def invoke(self, context, _event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}        
+
+    def execute(self, context):
+
+        # first get directory
+        # root = Path(context.scene.material_importer_settings.path)
+        root = Path(self.directory)
+        print(root)
+        if not root.is_dir():
+            bpy.context.window_manager.popup_menu(
+                lambda self, ctx: (self.layout.label(text="Not a folder.")) , 
+                title="Warning", 
+                icon='ERROR')
+            return {'CANCELLED'}
+
+        wm = context.window_manager
+
+        matPaths = list(p for p in root.iterdir() if p.is_dir())
+        wm.progress_begin(0, len(matPaths))
+
+        for tid, tpath in enumerate(matPaths):
+            tfiles = get_texture_files(tpath)
+            mark_asset = context.scene.material_importer_settings.mark_asset
+            convert = context.scene.material_importer_settings.convert_from_directx
+            mat = generate_material(tpath.stem.replace("_", " "), tfiles, markasset=mark_asset, convertnormals=convert)
+            if mat.asset_data:
+                if context.scene.material_importer_settings.tag1!="":
+                    mat.asset_data.tags.new(context.scene.material_importer_settings.tag1)
+                if context.scene.material_importer_settings.tag2!="":
+                    mat.asset_data.tags.new(context.scene.material_importer_settings.tag2)
+                if context.scene.material_importer_settings.tag3!="":
+                    mat.asset_data.tags.new(context.scene.material_importer_settings.tag3)
+            wm.progress_update(tid)
+
+        wm.progress_end()
+        return {'FINISHED'}
+
+class OLI_PT_import_material_folder(bpy.types.Panel):
+    # bl_space_type="VIEW_3D"
+    # bl_region_type="UI"
+    # bl_category="Tool"
+    bl_space_type="FILE_BROWSER"
+    bl_region_type="TOOL_PROPS"
+    bl_category="assets"    
+    bl_label="Material Importer"
+
+    @classmethod
+    def poll(cls, context):
+        return context.area.ui_type=="ASSETS"
+
+    def draw(self, context):
+        box = self.layout.box()
+        box.prop(context.scene.material_importer_settings, "mark_asset", text="Mark as asset")
+        box.prop(context.scene.material_importer_settings, "convert_from_directx", text="Add DX Conversion")
+
+        col = box.column(align=True)
+        col.label(text="Tags")
+        col.prop(context.scene.material_importer_settings, "tag1", text="1")
+        col.prop(context.scene.material_importer_settings, "tag2", text="2")
+        col.prop(context.scene.material_importer_settings, "tag3", text="3")
+
+        self.layout.operator("olitools.import_material_folder", text="Import Materials")
+
+blender_classes=[
+    OLI_PG_material_importer_settings,
+    OLI_OT_import_material_folder,
+    OLI_PT_import_material_folder
+]
+
+def register():
+    for blender_class in blender_classes:
+        bpy.utils.register_class(blender_class)
+        bpy.types.Scene.material_importer_settings = PointerProperty(type=OLI_PG_material_importer_settings)
+
+def unregister():
+    for blender_class in blender_classes:
+        bpy.utils.unregister_class(blender_class)
+    del bpy.types.Scene.material_importer_settings
+
+if __name__ == "__main__":
+    try:
+        unregister()
+    except Exception as e:
+        print(e)
+    register()
