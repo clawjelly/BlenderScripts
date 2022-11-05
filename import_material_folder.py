@@ -7,7 +7,7 @@
 bl_info = {
     "name": "Material Folder Importer",
     "author": "Oliver Reischl <clawjelly@gmail.net>",
-    "version": (0, 2),
+    "version": (0, 3),
     "blender": (3, 00, 0),
     # "location": "View3D > Add > Mesh > New Object",
     "description": "Adds some more functionality to the Asset Browser",
@@ -19,40 +19,90 @@ import json
 import bpy
 from pathlib import Path
 from bpy_extras.io_utils import unique_name, ExportHelper, ImportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty, PointerProperty, CollectionProperty
-from bpy.types import PropertyGroup
+from bpy.props import (
+    StringProperty, 
+    BoolProperty, 
+    EnumProperty, 
+    PointerProperty, 
+    CollectionProperty, 
+    IntProperty
+    )
+from bpy.types import PropertyGroup, AddonPreferences
 
 file_types = [".jpg", ".png", ".tga"]
 
-tex_keywords = {
-    "ao": ["_ao", "_AO", "ambientocclusion", "AmbientOcclusion", "ambientOcclusion"],
-    "diffuse": ["_diffuse", "basemap", "albedo", "Albedo", "_alb"],
-    "roughness": ["roughness", "_rgh", "Roughness"],
-    "normal": ["_nrm", "_normal", "NormalMap", "normalmap"],
-    "height": ["_height", "HeightMap", "heightmap"],
-    "thumbnail": ["_render", "thumbnail", "Thumbnail"],
-    "reflection": ["_reflection", "_ref", "Reflection"],
-    "metal": ["_met", "metalness", "Metalness"],
-    "emission": ["_emi", "Emission", "emissive"]
-}
+class ImportMaterialFolderPreferences(AddonPreferences):
+    # this must match the add-on name, use '__package__'
+    # when defining this in a submodule of a python package.
+    bl_idname = __name__
 
-def get_texture_files(rpath):
-    """ Searches the names of all files in a path for texture keywords
-    Returns a dict of texture paths
-    """
-    tfiles = dict()
-    for tfile in rpath.iterdir():
-        if tfile.is_dir():
-            continue
-        if tfile.suffix not in file_types:
-            continue
-        for tkey, tids in tex_keywords.items():
-            for tid in tids:
-                if tid in tfile.stem:
-                    tfiles[tkey]=tfile
-                    break
-    return tfiles
-    
+    # ------- Ambient Occlusion -------------
+    ao_keys: StringProperty( 
+        name ="Ambient Occlusion",
+        default = "_ao, _AO, ambientocclusion, AmbientOcclusion, ambientOcclusion"
+        )
+
+    # ------- Diffuse/Albedo -------------
+    diffuse_keys: StringProperty( 
+        name="Diffuse/Albedo",
+        default="_diffuse, basemap, albedo, Albedo, _alb",
+        )
+
+    # ------- Roughness -------------
+    roughness_keys: StringProperty( 
+        name="Roughness",
+        default="roughness, _rgh, Roughness",
+        )
+
+    # ------- Normal -------------
+    normal_keys: StringProperty( 
+        name="Normal",
+        default="_nrm, _normal, NormalMap, normalmap",
+        )
+
+    # ------- Height -------------
+    height_keys: StringProperty( 
+        name="Height",
+        default="_height, HeightMap, heightmap",
+        )
+
+    # ------- Thumbnail -------------
+    thumbnail_keys: StringProperty( 
+        name="Thumbnail",
+        default="_render, thumbnail, Thumbnail",
+        )
+
+    # ------- Reflection -------------
+    reflection_keys: StringProperty( 
+        name="Reflection",
+        default="_reflection, _ref, Reflection"
+        )
+
+    # ------- Metalness -------------
+    metal_keys: StringProperty( 
+        name="Metalness",
+        default="_met, metalness, Metalness",
+        )
+
+    # ------- Emission -------------
+    emission_keys: StringProperty( 
+        name="Emission",
+        default="_emi, Emission, emissive",
+        )
+
+    def draw(self, context):
+        box = self.layout.box()
+        box.label(text="Texture keywords, comma-seperated. The addon will look for all those.")
+        box.prop(self, "ao_keys")
+        box.prop(self, "diffuse_keys")
+        box.prop(self, "roughness_keys")
+        box.prop(self, "normal_keys")
+        box.prop(self, "height_keys")
+        box.prop(self, "thumbnail_keys")
+        box.prop(self, "reflection_keys")
+        box.prop(self, "metal_keys")
+        box.prop(self, "emission_keys")
+
 def get_node_by_id(mat, idname):
     for key, node in  mat.node_tree.nodes.items():
         if node.bl_idname == idname:
@@ -229,6 +279,40 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
     # def __init__(self):
     #     pass
 
+    def get_texture_files(self, context, rpath):
+        """ Searches the names of all files in a path for texture keywords
+        Returns a dict of texture paths
+        """
+
+        # build keyword dict
+        preferences = context.preferences
+        addon_prefs = preferences.addons[__name__].preferences
+        tex_keywords = dict()
+        tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.split(",")]
+        tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.split(",")]
+        tex_keywords["reflection"]  =[key.strip() for key in addon_prefs.reflection_keys.split(",")]
+        tex_keywords["roughness"]   =[key.strip() for key in addon_prefs.roughness_keys.split(",")]
+        tex_keywords["metal"]       =[key.strip() for key in addon_prefs.metal_keys.split(",")]
+        tex_keywords["emission"]    =[key.strip() for key in addon_prefs.emission_keys.split(",")]
+        tex_keywords["normal"]      =[key.strip() for key in addon_prefs.normal_keys.split(",")]
+        tex_keywords["height"]      =[key.strip() for key in addon_prefs.height_keys.split(",")]
+        tex_keywords["render"]      =[key.strip() for key in addon_prefs.thumbnail_keys.split(",")]
+
+        # build file dict
+        tfiles = dict()
+        for tfile in rpath.iterdir():
+            if tfile.is_dir():
+                continue
+            if tfile.suffix not in file_types:
+                continue
+            for tkey, tids in tex_keywords.items():
+                # print(f"Tex Type {tkey} has {len(tids)} keywords")
+                for tid in tids:
+                    if tid in tfile.stem:
+                        tfiles[tkey]=tfile
+                        break
+        return tfiles    
+
     def invoke(self, context, _event):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}        
@@ -252,7 +336,7 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
         wm.progress_begin(0, len(matPaths))
 
         for tid, tpath in enumerate(matPaths):
-            tfiles = get_texture_files(tpath)
+            tfiles = self.get_texture_files(context, tpath)
             mark_asset = context.scene.material_importer_settings.mark_asset
             convert = context.scene.material_importer_settings.convert_from_directx
             mat = generate_material(tpath.stem.replace("_", " "), tfiles, markasset=mark_asset, convertnormals=convert)
@@ -295,6 +379,7 @@ class OLI_PT_import_material_folder(bpy.types.Panel):
         self.layout.operator("olitools.import_material_folder", text="Import Materials")
 
 blender_classes=[
+    ImportMaterialFolderPreferences,
     OLI_PG_material_importer_settings,
     OLI_OT_import_material_folder,
     OLI_PT_import_material_folder
@@ -303,16 +388,20 @@ blender_classes=[
 def register():
     for blender_class in blender_classes:
         bpy.utils.register_class(blender_class)
-        bpy.types.Scene.material_importer_settings = PointerProperty(type=OLI_PG_material_importer_settings)
+    bpy.types.Scene.material_importer_settings = PointerProperty(type=OLI_PG_material_importer_settings)
 
 def unregister():
+    del bpy.types.Scene.material_importer_settings
     for blender_class in blender_classes:
         bpy.utils.unregister_class(blender_class)
-    del bpy.types.Scene.material_importer_settings
 
 if __name__ == "__main__":
+    print("------- Unregister...")
     try:
         unregister()
     except Exception as e:
+        print("Excerption!")
         print(e)
+    print("------- Register...")
     register()
+    print("------- Done!")
