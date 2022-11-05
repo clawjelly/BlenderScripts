@@ -27,19 +27,7 @@ I made a little demo that demonstrates how it works:
 
 This imports a material/texture folder structure as materials into blender. Textures are identified by keyworks:
 
-```python
-tex_keywords = {
-    "ao": ["_ao", "ambientocclusion", "AmbientOcclusion", "ambientOcclusion"],
-    "diffuse": ["_diffuse", "basemap", "albedo", "Albedo", "_alb"],
-    "roughness": ["roughness", "_rgh", "Roughness"],
-    "normal": ["_nrm", "_normal", "NormalMap", "normalmap"],
-    "height": ["_height", "HeightMap", "heightmap"],
-    "render": ["_render", "thumbnail", "Thumbnail"],
-    "reflection": ["_reflection", "_ref", "Reflection"],
-    "metal": ["_met", "metalness", "Metalness"],
-    "emission": ["_emi", "Emission", "emissive"]
-}
-```
+![material_folder_importer_settings](img/material_folder_importer_settings.PNG)
 
 Setup by adding your desired folder to the script, adapt the tags and start the script. You will receive materials looking something like this:
 
