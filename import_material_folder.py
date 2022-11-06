@@ -36,10 +36,16 @@ class ImportMaterialFolderPreferences(AddonPreferences):
     # when defining this in a submodule of a python package.
     bl_idname = __name__
 
+    ignore_case: BoolProperty(
+        name = "Ignor Upper/Lowercase",
+        description = "Activating this will read and compare all keywords and all filenames as lowercase.",
+        default = False,
+        )
+
     # ------- Ambient Occlusion -------------
     ao_keys: StringProperty( 
         name ="Ambient Occlusion",
-        default = "_ao, _AO, ambientocclusion, AmbientOcclusion, ambientOcclusion"
+        default = "_ao, _AO, ambientocclusion, AmbientOcclusion, ambientOcclusion",
         )
 
     # ------- Diffuse/Albedo -------------
@@ -91,6 +97,7 @@ class ImportMaterialFolderPreferences(AddonPreferences):
         )
 
     def draw(self, context):
+        # self.layout.prop(self, "ignore_case")
         box = self.layout.box()
         box.label(text="Texture keywords, comma-seperated. The addon will look for all those.")
         box.prop(self, "ao_keys")
@@ -113,6 +120,7 @@ def generate_texture_nodes(mat, tpath, offset=(0,0)):
     """ Generates nodes for mapping, texture coordinates and image texture.
     Only generates mapping node if no mapping node exists. Otherwise recycles.
     """
+    
     map_node = get_node_by_id(mat, "ShaderNodeMapping")
     if not map_node:
         # Texture Coordinates
@@ -128,13 +136,18 @@ def generate_texture_nodes(mat, tpath, offset=(0,0)):
     tex_node=mat.node_tree.nodes.new("ShaderNodeTexImage")
     tex_node.location=(-500+offset[0],0+offset[1])
     mat.node_tree.links.new(map_node.outputs[0], tex_node.inputs[0])
-    img=bpy.data.images.load(str(tpath))
-    tex_node.image=img
-
+    
+    # check for existing imgages
+    img=None
+    for i in bpy.data.images:
+        if str(tpath)==i.filepath:
+            i.reload()
+            img = i
+            break
+    tex_node.image = img if img!=None else bpy.data.images.load(str(tpath))
     return tex_node
 
-
-def generate_material(matName, tfiles, markasset=False, convertnormals=True):
+def generate_material(matName, tfiles, markasset=False, convertnormals=True, overwrite=True):
     """Generates a material from a list of texture file paths.
 
     markasset: Marks the material as a blender asset, so it will show up in the assetdb
@@ -220,8 +233,10 @@ def generate_material(matName, tfiles, markasset=False, convertnormals=True):
         mat.node_tree.links.new(heightTex.outputs[0], dispNode.inputs[0])
         mat.node_tree.links.new(dispNode.outputs[0], output_node.inputs[2])
 
+
     if markasset:
         mat.asset_mark()
+        # return mat
         if "thumbnail" in tfiles:
             with bpy.context.temp_override(id=mat):
                 bpy.ops.ed.lib_id_load_custom_preview(filepath=str(tfiles["thumbnail"]))
@@ -263,6 +278,11 @@ class OLI_PG_material_importer_settings(PropertyGroup):
     tag3 : StringProperty(
         name="Adds an asset tag",
         default=""
+        )
+
+    overwrite_materials : BoolProperty(
+        name="Overwrite Materials",
+        default=True,
         )
 
 class OLI_OT_import_material_folder(bpy.types.Operator):
@@ -335,11 +355,29 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
         matPaths = list(p for p in root.iterdir() if p.is_dir())
         wm.progress_begin(0, len(matPaths))
 
+        new_mats=0
+        delete_mats=[]
+
         for tid, tpath in enumerate(matPaths):
             tfiles = self.get_texture_files(context, tpath)
+            matName = tpath.stem.replace("_", " ")
             mark_asset = context.scene.material_importer_settings.mark_asset
             convert = context.scene.material_importer_settings.convert_from_directx
-            mat = generate_material(tpath.stem.replace("_", " "), tfiles, markasset=mark_asset, convertnormals=convert)
+            overwrite = context.scene.material_importer_settings.overwrite_materials
+
+            if bpy.data.materials.find(matName)!=-1:
+                if overwrite:
+                    mat = bpy.data.materials[matName]
+                    mat.user_clear()
+                    mat.name=f"OLD__{len(delete_mats)}"
+                    delete_mats.append(mat)
+                else:
+                    continue
+
+            mat = generate_material(matName, tfiles, markasset=mark_asset, convertnormals=convert, overwrite=overwrite)
+            if not mat:
+                continue
+            new_mats+=1
             if mat.asset_data:
                 if context.scene.material_importer_settings.tag1!="":
                     mat.asset_data.tags.new(context.scene.material_importer_settings.tag1)
@@ -348,6 +386,17 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
                 if context.scene.material_importer_settings.tag3!="":
                     mat.asset_data.tags.new(context.scene.material_importer_settings.tag3)
             wm.progress_update(tid)
+
+        # cleanup because for some reason context loses temp_override when removing materials
+        for mat in delete_mats:
+            mat.user_clear()
+            bpy.data.materials.remove(mat)
+
+        if new_mats==0:
+            bpy.context.window_manager.popup_menu(
+                lambda self, ctx: (self.layout.label(text="No new materials were imported!")) , 
+                title="Warning", 
+                icon='ERROR')
 
         wm.progress_end()
         return {'FINISHED'}
@@ -367,8 +416,24 @@ class OLI_PT_import_material_folder(bpy.types.Panel):
 
     def draw(self, context):
         box = self.layout.box()
-        box.prop(context.scene.material_importer_settings, "mark_asset", text="Mark as asset")
-        box.prop(context.scene.material_importer_settings, "convert_from_directx", text="Add DX Conversion")
+
+        if context.scene.material_importer_settings.mark_asset:
+            btext = "Mark material as asset"
+        else:
+            btext = "Only import material"
+        box.prop(context.scene.material_importer_settings, "mark_asset", text=btext)
+
+        if context.scene.material_importer_settings.convert_from_directx:
+            btext = "Add DX to OGL Normalmap Conversion"
+        else:
+            btext = "Expect OpenGL Normalmaps"
+        box.prop(context.scene.material_importer_settings, "convert_from_directx", text=btext)
+
+        if context.scene.material_importer_settings.overwrite_materials:
+            btext = "Existing materials will be overwritten"
+        else:
+            btext = "Existing materials are maintained."
+        box.prop(context.scene.material_importer_settings, "overwrite_materials", text=btext)
 
         col = box.column(align=True)
         col.label(text="Tags")
