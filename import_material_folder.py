@@ -1,3 +1,4 @@
+
 # -------------------------------------------------------------
 # Material Folder Importer
 # -------------------------------------------------------------
@@ -31,7 +32,100 @@ from bpy.types import PropertyGroup, AddonPreferences
 
 file_types = [".jpg", ".png", ".tga"]
 
-class ImportMaterialFolderPreferences(AddonPreferences):
+class OLI_OT_reset_keywords(bpy.types.Operator):
+    """Tooltip"""
+    bl_idname = "olitools.reset_keywords"
+    bl_label = "Reset material folder importer keywords"
+
+    def execute(self, context):
+        preferences = context.preferences
+        addon_prefs = preferences.addons[__name__].preferences
+        addon_prefs.ao_keys          = "_ao, _AO, ambientocclusion, AmbientOcclusion, ambientOcclusion"
+        addon_prefs.diffuse_keys     = "_diffuse, basemap, albedo, Albedo, _alb"
+        addon_prefs.roughness_keys   = "roughness, _rgh, Roughness"
+        addon_prefs.normal_keys      = "_nrm, _normal, NormalMap, normalmap"
+        addon_prefs.height_keys      = "_height, HeightMap, heightmap"
+        addon_prefs.reflection_keys  = "_reflection, _ref, Reflection"
+        addon_prefs.metal_keys       = "_met, metalness, Metalness"
+        addon_prefs.emission_keys    = "_emi, Emission, emissive"
+        addon_prefs.thumbnail_keys   = "_render, thumbnail, Thumbnail"
+        return {'FINISHED'}
+
+class OLI_OT_save_keywords(bpy.types.Operator):
+    """Tooltip"""
+    bl_idname = "olitools.save_keywords"
+    bl_label = "Save material folder importer keywords"
+
+    def invoke(self, context, event):
+        self.bl_label = "Keyword Prefs exist. Overwrite?"
+        return context.window_manager.invoke_confirm(self, event)
+
+    def draw(self, context):
+        row = self.layout
+        row.label(text="Do you really want to do that?")
+
+    def execute(self, context):
+        preferences = context.preferences
+        addon_prefs = preferences.addons[__name__].preferences
+        tex_keywords = dict()
+        tex_keywords["ao"]          = addon_prefs.ao_keys
+        tex_keywords["diffuse"]     = addon_prefs.diffuse_keys
+        tex_keywords["roughness"]   = addon_prefs.roughness_keys
+        tex_keywords["normal"]      = addon_prefs.normal_keys
+        tex_keywords["height"]      = addon_prefs.height_keys
+        tex_keywords["reflection"]  = addon_prefs.reflection_keys
+        tex_keywords["metal"]       = addon_prefs.metal_keys
+        tex_keywords["emission"]    = addon_prefs.emission_keys
+        tex_keywords["render"]      = addon_prefs.thumbnail_keys
+
+        cPath=Path(bpy.utils.resource_path(type="USER")) / "config" / "ImportMaterialFolderSettings.json"
+
+        try:
+            with open(cPath , "w") as jsonfile:
+                json.dump(tex_keywords, jsonfile, indent=2)
+        except Exception as e:
+            bpy.context.window_manager.popup_menu(
+                lambda self, ctx: (self.layout.label(text="Something went wrong saving the prefs")) , 
+                title="Warning", 
+                icon='ERROR')
+            return {"CANCELLED"}
+
+        return {'FINISHED'}
+
+class OLI_OT_load_keywords(bpy.types.Operator):
+    """Tooltip"""
+    bl_idname = "olitools.load_keywords"
+    bl_label = "Load material folder importer keywords"
+
+    def execute(self, context):
+        tex_keywords = dict()
+
+        cPath=Path(bpy.utils.resource_path(type="USER")) / "config" / "ImportMaterialFolderSettings.json"
+        try:
+            with open(cPath) as jsonfile:
+                tex_keywords = json.load(jsonfile)
+        except Exception as e:
+            bpy.context.window_manager.popup_menu(
+                lambda self, ctx: (self.layout.label(text="Something went wrong loading the prefs")) , 
+                title="Warning", 
+                icon='ERROR')
+            return {"CANCELLED"}
+
+        preferences = context.preferences
+        addon_prefs = preferences.addons[__name__].preferences
+        addon_prefs.ao_keys = tex_keywords["ao"]
+        addon_prefs.diffuse_keys = tex_keywords["diffuse"]
+        addon_prefs.roughness_keys = tex_keywords["roughness"]
+        addon_prefs.normal_keys = tex_keywords["normal"]
+        addon_prefs.height_keys = tex_keywords["height"]
+        addon_prefs.reflection_keys = tex_keywords["reflection"]
+        addon_prefs.metal_keys = tex_keywords["metal"]
+        addon_prefs.emission_keys = tex_keywords["emission"]
+        addon_prefs.thumbnail_keys = tex_keywords["render"]
+
+        return {'FINISHED'}
+
+class OLI_AP_material_importer_prefs(AddonPreferences):
     # this must match the add-on name, use '__package__'
     # when defining this in a submodule of a python package.
     bl_idname = __name__
@@ -109,6 +203,11 @@ class ImportMaterialFolderPreferences(AddonPreferences):
         box.prop(self, "reflection_keys")
         box.prop(self, "metal_keys")
         box.prop(self, "emission_keys")
+
+        row = self.layout.row()
+        row.operator("olitools.reset_keywords", text="Reset Keywords")
+        row.operator("olitools.save_keywords", text="Save Keywords")
+        row.operator("olitools.load_keywords", text="Load Keywords")
 
 def get_node_by_id(mat, idname):
     for key, node in  mat.node_tree.nodes.items():
@@ -444,7 +543,10 @@ class OLI_PT_import_material_folder(bpy.types.Panel):
         self.layout.operator("olitools.import_material_folder", text="Import Materials")
 
 blender_classes=[
-    ImportMaterialFolderPreferences,
+    OLI_OT_reset_keywords,
+    OLI_OT_save_keywords,
+    OLI_OT_load_keywords,
+    OLI_AP_material_importer_prefs,
     OLI_PG_material_importer_settings,
     OLI_OT_import_material_folder,
     OLI_PT_import_material_folder
