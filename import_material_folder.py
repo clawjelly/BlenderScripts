@@ -2,13 +2,14 @@
 # -------------------------------------------------------------
 # Material Folder Importer
 # -------------------------------------------------------------
-# Version 0.2
+# Version 0.4
+# - Added UI for filetypes
 # -------------------------------------------------------------
 
 bl_info = {
     "name": "Material Folder Importer",
     "author": "Oliver Reischl <clawjelly@gmail.net>",
-    "version": (0, 3),
+    "version": (0, 4),
     "blender": (3, 00, 0),
     # "location": "View3D > Add > Mesh > New Object",
     "description": "Adds some more functionality to the Asset Browser",
@@ -30,7 +31,7 @@ from bpy.props import (
     )
 from bpy.types import PropertyGroup, AddonPreferences
 
-file_types = [".jpg", ".png", ".tga"]
+# file_types = [".jpg", ".png", ".tga"]
 
 class OLI_OT_reset_keywords(bpy.types.Operator):
     """Tooltip"""
@@ -136,6 +137,12 @@ class OLI_AP_material_importer_prefs(AddonPreferences):
         default = False,
         )
 
+    file_types: bpy.props.StringProperty(
+        name="File Types",
+        default="jpg, png, tga, tif, tiff",
+        description="File types that will be aknowledged as textures."
+    )
+
     # ------- Ambient Occlusion -------------
     ao_keys: StringProperty( 
         name ="Ambient Occlusion",
@@ -192,6 +199,8 @@ class OLI_AP_material_importer_prefs(AddonPreferences):
 
     def draw(self, context):
         # self.layout.prop(self, "ignore_case")
+        box = self.layout.box()
+        box.prop(self, "file_types")
         box = self.layout.box()
         box.label(text="Texture keywords, comma-seperated. The addon will look for all those.")
         box.prop(self, "ao_keys")
@@ -403,9 +412,14 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
         Returns a dict of texture paths
         """
 
-        # build keyword dict
         preferences = context.preferences
         addon_prefs = preferences.addons[__name__].preferences
+
+        # build filetypes
+        # file_types = [".jpg", ".png", ".tga"]
+        file_types = [f".{key.strip()}" for key in addon_prefs.file_types.split(",")]
+
+        # build keyword dict
         tex_keywords = dict()
         tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.split(",")]
         tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.split(",")]
