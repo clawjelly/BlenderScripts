@@ -424,15 +424,15 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
 
         # build keyword dict
         tex_keywords = dict()
-        tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.split(",") if key!=""]
-        tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.split(",") if key!=""]
-        tex_keywords["reflection"]  =[key.strip() for key in addon_prefs.reflection_keys.split(",") if key!=""]
-        tex_keywords["roughness"]   =[key.strip() for key in addon_prefs.roughness_keys.split(",") if key!=""]
-        tex_keywords["metal"]       =[key.strip() for key in addon_prefs.metal_keys.split(",") if key!=""]
-        tex_keywords["emission"]    =[key.strip() for key in addon_prefs.emission_keys.split(",") if key!=""]
-        tex_keywords["normal"]      =[key.strip() for key in addon_prefs.normal_keys.split(",") if key!=""]
-        tex_keywords["height"]      =[key.strip() for key in addon_prefs.height_keys.split(",") if key!=""]
-        tex_keywords["render"]      =[key.strip() for key in addon_prefs.thumbnail_keys.split(",") if key!=""]
+        tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.strip().split(",") if key!=""]
+        tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.strip().split(",") if key!=""]
+        tex_keywords["reflection"]  =[key.strip() for key in addon_prefs.reflection_keys.strip().split(",") if key!=""]
+        tex_keywords["roughness"]   =[key.strip() for key in addon_prefs.roughness_keys.strip().split(",") if key!=""]
+        tex_keywords["metal"]       =[key.strip() for key in addon_prefs.metal_keys.strip().split(",") if key!=""]
+        tex_keywords["emission"]    =[key.strip() for key in addon_prefs.emission_keys.strip().split(",") if key!=""]
+        tex_keywords["normal"]      =[key.strip() for key in addon_prefs.normal_keys.strip().split(",") if key!=""]
+        tex_keywords["height"]      =[key.strip() for key in addon_prefs.height_keys.strip().split(",") if key!=""]
+        tex_keywords["render"]      =[key.strip() for key in addon_prefs.thumbnail_keys.strip().split(",") if key!=""]
 
         # build file dict
         tfiles = dict()
@@ -540,15 +540,15 @@ class OLI_OT_Debug(bpy.types.Operator):
 
         # build keyword dict
         tex_keywords = dict()
-        tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.split(",") if key!=""]
-        tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.split(",") if key!=""]
-        tex_keywords["reflection"]  =[key.strip() for key in addon_prefs.reflection_keys.split(",") if key!=""]
-        tex_keywords["roughness"]   =[key.strip() for key in addon_prefs.roughness_keys.split(",") if key!=""]
-        tex_keywords["metal"]       =[key.strip() for key in addon_prefs.metal_keys.split(",") if key!=""]
-        tex_keywords["emission"]    =[key.strip() for key in addon_prefs.emission_keys.split(",") if key!=""]
-        tex_keywords["normal"]      =[key.strip() for key in addon_prefs.normal_keys.split(",") if key!=""]
-        tex_keywords["height"]      =[key.strip() for key in addon_prefs.height_keys.split(",") if key!=""]
-        tex_keywords["render"]      =[key.strip() for key in addon_prefs.thumbnail_keys.split(",") if key!=""]
+        tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.strip().split(",") if key!=""]
+        tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.strip().split(",") if key!=""]
+        tex_keywords["reflection"]  =[key.strip() for key in addon_prefs.reflection_keys.strip().split(",") if key!=""]
+        tex_keywords["roughness"]   =[key.strip() for key in addon_prefs.roughness_keys.strip().split(",") if key!=""]
+        tex_keywords["metal"]       =[key.strip() for key in addon_prefs.metal_keys.strip().split(",") if key!=""]
+        tex_keywords["emission"]    =[key.strip() for key in addon_prefs.emission_keys.strip().split(",") if key!=""]
+        tex_keywords["normal"]      =[key.strip() for key in addon_prefs.normal_keys.strip().split(",") if key!=""]
+        tex_keywords["height"]      =[key.strip() for key in addon_prefs.height_keys.strip().split(",") if key!=""]
+        tex_keywords["render"]      =[key.strip() for key in addon_prefs.thumbnail_keys.strip().split(",") if key!=""]
 
         for tkey, tids in tex_keywords.items():
             print(f"Tex Type {tkey} has {len(tids)} keywords")
