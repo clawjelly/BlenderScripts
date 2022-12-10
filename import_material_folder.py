@@ -2,6 +2,8 @@
 # -------------------------------------------------------------
 # Material Folder Importer
 # -------------------------------------------------------------
+# Version 0.41
+# - Added lower/uppercase ignore
 # Version 0.4
 # - Added UI for filetypes
 # -------------------------------------------------------------
@@ -9,7 +11,7 @@
 bl_info = {
     "name": "Material Folder Importer",
     "author": "Oliver Reischl <clawjelly@gmail.net>",
-    "version": (0, 4),
+    "version": (0, 41),
     "blender": (3, 00, 0),
     # "location": "View3D > Add > Mesh > New Object",
     "description": "Adds some more functionality to the Asset Browser",
@@ -132,7 +134,7 @@ class OLI_AP_material_importer_prefs(AddonPreferences):
     bl_idname = __name__
 
     ignore_case: BoolProperty(
-        name = "Ignor Upper/Lowercase",
+        name = "Ignore Upper/Lowercase",
         description = "Activating this will read and compare all keywords and all filenames as lowercase.",
         default = False,
         )
@@ -201,6 +203,7 @@ class OLI_AP_material_importer_prefs(AddonPreferences):
         # self.layout.prop(self, "ignore_case")
         box = self.layout.box()
         box.prop(self, "file_types")
+        box.prop(self, "ignore_case")
         box = self.layout.box()
         box.label(text="Texture keywords, comma-seperated. The addon will look for all those.")
         box.prop(self, "ao_keys")
@@ -441,9 +444,14 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
             for tkey, tids in tex_keywords.items():
                 # print(f"Tex Type {tkey} has {len(tids)} keywords")
                 for tid in tids:
-                    if tid in tfile.stem:
-                        tfiles[tkey]=tfile
-                        break
+                    if addon_prefs.ignore_case:
+                        if tid.lower() in tfile.stem.lower():
+                            tfiles[tkey]=tfile
+                            break
+                    else:
+                        if tid in tfile.stem:
+                            tfiles[tkey]=tfile
+                            break
         return tfiles    
 
     def invoke(self, context, _event):
