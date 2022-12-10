@@ -424,15 +424,15 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
 
         # build keyword dict
         tex_keywords = dict()
-        tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.split(",")]
-        tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.split(",")]
-        tex_keywords["reflection"]  =[key.strip() for key in addon_prefs.reflection_keys.split(",")]
-        tex_keywords["roughness"]   =[key.strip() for key in addon_prefs.roughness_keys.split(",")]
-        tex_keywords["metal"]       =[key.strip() for key in addon_prefs.metal_keys.split(",")]
-        tex_keywords["emission"]    =[key.strip() for key in addon_prefs.emission_keys.split(",")]
-        tex_keywords["normal"]      =[key.strip() for key in addon_prefs.normal_keys.split(",")]
-        tex_keywords["height"]      =[key.strip() for key in addon_prefs.height_keys.split(",")]
-        tex_keywords["render"]      =[key.strip() for key in addon_prefs.thumbnail_keys.split(",")]
+        tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.split(",") if key!=""]
+        tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.split(",") if key!=""]
+        tex_keywords["reflection"]  =[key.strip() for key in addon_prefs.reflection_keys.split(",") if key!=""]
+        tex_keywords["roughness"]   =[key.strip() for key in addon_prefs.roughness_keys.split(",") if key!=""]
+        tex_keywords["metal"]       =[key.strip() for key in addon_prefs.metal_keys.split(",") if key!=""]
+        tex_keywords["emission"]    =[key.strip() for key in addon_prefs.emission_keys.split(",") if key!=""]
+        tex_keywords["normal"]      =[key.strip() for key in addon_prefs.normal_keys.split(",") if key!=""]
+        tex_keywords["height"]      =[key.strip() for key in addon_prefs.height_keys.split(",") if key!=""]
+        tex_keywords["render"]      =[key.strip() for key in addon_prefs.thumbnail_keys.split(",") if key!=""]
 
         # build file dict
         tfiles = dict()
@@ -450,6 +450,7 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
                             break
                     else:
                         if tid in tfile.stem:
+                            print(f"Keyword {tid} found in {tfile.stem}")
                             tfiles[tkey]=tfile
                             break
         return tfiles    
@@ -481,6 +482,8 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
 
         for tid, tpath in enumerate(matPaths):
             tfiles = self.get_texture_files(context, tpath)
+            if len(tfiles)==0:
+                continue
             matName = tpath.stem.replace("_", " ")
             mark_asset = context.scene.material_importer_settings.mark_asset
             convert = context.scene.material_importer_settings.convert_from_directx
@@ -521,6 +524,39 @@ class OLI_OT_import_material_folder(bpy.types.Operator):
 
         wm.progress_end()
         return {'FINISHED'}
+
+class OLI_OT_Debug(bpy.types.Operator):
+    """Tooltip"""
+    bl_idname = "olitools.debug_test"
+    bl_label = "Debug Tester"
+
+    def execute(self, context):
+        preferences = context.preferences
+        addon_prefs = preferences.addons[__name__].preferences
+
+        # build filetypes
+        # file_types = [".jpg", ".png", ".tga"]
+        file_types = [f".{key.strip()}" for key in addon_prefs.file_types.split(",")]
+
+        # build keyword dict
+        tex_keywords = dict()
+        tex_keywords["ao"]          =[key.strip() for key in addon_prefs.ao_keys.split(",") if key!=""]
+        tex_keywords["diffuse"]     =[key.strip() for key in addon_prefs.diffuse_keys.split(",") if key!=""]
+        tex_keywords["reflection"]  =[key.strip() for key in addon_prefs.reflection_keys.split(",") if key!=""]
+        tex_keywords["roughness"]   =[key.strip() for key in addon_prefs.roughness_keys.split(",") if key!=""]
+        tex_keywords["metal"]       =[key.strip() for key in addon_prefs.metal_keys.split(",") if key!=""]
+        tex_keywords["emission"]    =[key.strip() for key in addon_prefs.emission_keys.split(",") if key!=""]
+        tex_keywords["normal"]      =[key.strip() for key in addon_prefs.normal_keys.split(",") if key!=""]
+        tex_keywords["height"]      =[key.strip() for key in addon_prefs.height_keys.split(",") if key!=""]
+        tex_keywords["render"]      =[key.strip() for key in addon_prefs.thumbnail_keys.split(",") if key!=""]
+
+        for tkey, tids in tex_keywords.items():
+            print(f"Tex Type {tkey} has {len(tids)} keywords")
+            for tid in tids:
+                print(f"- {tid}")
+
+        return {'FINISHED'}
+
 
 class OLI_PT_import_material_folder(bpy.types.Panel):
     # bl_space_type="VIEW_3D"
@@ -563,6 +599,7 @@ class OLI_PT_import_material_folder(bpy.types.Panel):
         col.prop(context.scene.material_importer_settings, "tag3", text="3")
 
         self.layout.operator("olitools.import_material_folder", text="Import Materials")
+        # self.layout.operator("olitools.debug_test")
 
 blender_classes=[
     OLI_OT_reset_keywords,
@@ -571,7 +608,8 @@ blender_classes=[
     OLI_AP_material_importer_prefs,
     OLI_PG_material_importer_settings,
     OLI_OT_import_material_folder,
-    OLI_PT_import_material_folder
+    OLI_PT_import_material_folder,
+    # OLI_OT_Debug
 ]
 
 def register():
