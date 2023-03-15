@@ -34,6 +34,13 @@ class OP_custom_mode_setter(bpy.types.Operator):
 
     def custom_mode_setter(self, context, mode):
         obj = context.active_object
+        # Is object a linked object?
+        if obj.library != None:
+            bpy.context.window_manager.popup_menu(
+                lambda self, ctx: (self.layout.label(text="Can't edit linked objects.")) , 
+                title="Warning", 
+                icon='ERROR')
+            return
         # print(f"Object {obj.name} in mode {obj.mode} set to Mode number: {mode}")
         if obj.type=='ARMATURE':
             print("Armature!")
