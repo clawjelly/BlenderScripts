@@ -13,7 +13,7 @@ bl_info = {
 	"category": "Assets",
 }
 
-import json
+import json, subprocess
 from pathlib import Path
 import bpy
 from bpy.path import abspath, relpath
@@ -260,7 +260,7 @@ class OLI_OT_export_to_directory(bpy.types.Operator):
 
 class OLI_OT_object_export_file_path_window(bpy.types.Operator):
 	"""Opens a better file select window"""
-	bl_idname = "olitools.object_export_file_path_window"  # important since its how bpy.ops.import_test.some_data is constructed
+	bl_idname = "olitools.object_export_file_path_window"
 	bl_label = "Set Export Path"
 
 	# ExportHelper mixin class uses this
@@ -282,8 +282,6 @@ class OLI_OT_object_export_file_path_window(bpy.types.Operator):
 			return False
 		if context.active_object==None:
 			return False
-		# if context.active_object.toolchain_settings.export_path=="":
-		# 	return False
 		return True
 
 	def invoke(self, context, _event):
@@ -322,14 +320,29 @@ class OLI_OT_open_exported_file(bpy.types.Operator):
 		return context.active_object is not None
 
 	def execute(self, context):
-		pass
+		fbx_file_path = context.scene.toolchain_settings.project_path + "\\" + context.active_object.toolchain_settings.export_path
+		subprocess.Popen(fbx_file_path, shell=True)
+		return {'FINISHED'}
+
+class OLI_OT_open_explorer_to_file(bpy.types.Operator):
+	"""Tooltip"""
+	bl_idname = "olitools.open_explorer_to_file"
+	bl_label = "Show in Explorer"
+
+	@classmethod
+	def poll(cls, context):
+		return context.active_object is not None
+
+	def execute(self, context):
+		fbx_file_path = Path(context.scene.toolchain_settings.project_path) / context.active_object.toolchain_settings.export_path
+		subprocess.Popen(f'explorer /select,"{fbx_file_path	}"')
 		return {'FINISHED'}
 
 class OLI_PT_export_to_directory(bpy.types.Panel):
 	bl_space_type="VIEW_3D"
 	bl_region_type="UI"
 	bl_category="Tool"
-	bl_label="Export FBX to Directory"
+	bl_label="Rapid Gamedev Toolchain"
 
 	@classmethod
 	def poll(cls, context):
@@ -341,17 +354,23 @@ class OLI_PT_export_to_directory(bpy.types.Panel):
 		if context.active_object==None:
 			return
 		box = self.layout.box()
-		box.prop(context.scene.toolchain_settings, "project_path", text="Project")
+
 		
+		box.prop(context.scene.toolchain_settings, "project_path", text="Project")
 		sbox = box.split(factor=.9, align=True)
 		sbox.prop(context.object.toolchain_settings, "export_path", text="Object")
 		sbox.operator("olitools.object_export_file_path_window", text="", icon="FILE_FOLDER")
 		
 		box.prop(context.object.toolchain_settings, "export_settings", text="Settings")
 		box.prop(context.object.toolchain_settings, "center")
-		box.scale_y=2
-		box.operator("export.to_directory", text="Export")
-		box.scale_y=1
+
+		col = box.column(align=True)
+		col.scale_y = 2
+		col.operator("export.to_directory", text="Export", icon="EXPORT")
+
+		row = box.row(align=True)
+		row.operator("olitools.open_exported_file", text="Open File", icon="FILE_3D")
+		row.operator("olitools.open_explorer_to_file", text="Open Explorer", icon="FILE_FOLDER")
 
 
 blender_classes=[
@@ -359,6 +378,8 @@ blender_classes=[
 	OLI_PG_export_object_settings,
 	OLI_OT_export_to_directory,
 	OLI_OT_object_export_file_path_window,
+	OLI_OT_open_explorer_to_file,
+	OLI_OT_open_exported_file,
 	OLI_PT_export_to_directory
 ]
 
@@ -376,6 +397,3 @@ def unregister():
 
 if __name__ == "__main__":
 	register()
-	# save_fbx_settings()
-	# fbxpath = r"H:\Projects\UnityProjects\EnterTheStarship\Assets\ShipModules\Pentacorridor\Models\PentaCorridor_Door01.fbx"
-	# bpy.ops.export_scene.fbx(filepath=fbxpath, **fbx_export_settings)
