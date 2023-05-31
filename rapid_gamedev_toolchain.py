@@ -1,15 +1,16 @@
 # -------------------------------------------------------------
-# Olitools Exporter
+# Rapid Gamedev Toolchain
 # -------------------------------------------------------------
-# Version 0.1
+# Version 0.2:
+# - Change to RGT
 # -------------------------------------------------------------
 
 bl_info = {
-	"name": "Olitools Export",
+	"name": "Rapid Gamedev Toolchain",
 	"author": "Oliver Reischl <clawjelly@gmail.net>",
-	"version": (0, 1),
+	"version": (0, 2),
 	"blender": (3, 00, 0),
-	"description": "Exports objects directly without asking for location.",
+	"description": "Helps to setup game objects for export.",
 	"category": "Assets",
 }
 
@@ -27,6 +28,10 @@ from bpy.props import (
 	CollectionProperty, 
 	IntProperty
 	)
+
+# -----------------------------------------------------------------------
+# Functions
+# -----------------------------------------------------------------------
 
 def select(*objs):
 	bpy.ops.object.select_all(action='DESELECT')
@@ -114,9 +119,38 @@ def check_for_export(obj):
 	return ""
 
 # -----------------------------------------------------------------------
-# Scene Settings
+# Addon Settings
 # -----------------------------------------------------------------------
 
+class OLI_AP_rapid_gamedev_toolchain_settings(AddonPreferences):
+	# this must match the add-on name, use '__package__'
+	# when defining this in a submodule of a python package.
+	bl_idname = "rapid_gamedev_toolchain" # __name__
+
+	painter_exe: bpy.props.StringProperty(
+		name="Painter EXE",
+		description="Substance Painter Executeable Path",
+		subtype="FILE_PATH",
+		default="",
+		maxlen=0
+	)
+
+	designer_exe: bpy.props.StringProperty(
+		name="Designer EXE",
+		description="Affinty Designer Executeable Path",
+		subtype="FILE_PATH",
+		default="",
+		maxlen=0
+	)
+
+	def draw(self, context):
+		box = self.layout.box()
+		box.prop(self, "painter_exe", text="Painter EXE")
+		box.prop(self, "designer_exe", text="Designer EXE")
+
+# -----------------------------------------------------------------------
+# Scene Settings
+# -----------------------------------------------------------------------
 
 class OLI_PG_export_directory_settings(PropertyGroup):
 	
@@ -133,6 +167,28 @@ class OLI_PG_export_directory_settings(PropertyGroup):
 		update = update_project_path
 	)
 
+	map_export_directory: bpy.props.StringProperty(
+		name="Texture Map Export Directory",
+		description="This is where painter should export maps to. If empty, none will be specified.",
+		default="",
+		subtype="DIR_PATH",
+		maxlen=0
+	)
+
+	uv_export_directory: bpy.props.StringProperty(
+		name="UV Template Export Directory",
+		description="This is where the UV template will be saved.",
+		default="",
+		subtype="DIR_PATH",
+		maxlen=0
+	)
+
+	uv_resolution: bpy.props.IntProperty(
+		name="UV resolution",
+		default=2048,
+		min=0, max=4096,
+		description="This is needed for export, even though we're exporting shapes."
+	)
 
 # -----------------------------------------------------------------------
 # Object Settings
@@ -291,22 +347,12 @@ class OLI_OT_object_export_file_path_window(bpy.types.Operator):
 		else:
 			self.filepath = context.scene.toolchain_settings.project_path + "\\" + context.active_object.toolchain_settings.export_path
 		context.window_manager.fileselect_add(self)
-		if self.filepath[-4:]!=".fbx":
-			self.filepath+=".fbx"
 		return {'RUNNING_MODAL'}
 
 	def execute(self, context):
 		"""This is called after the window opened."""
-		root = Path(self.directory)
-		print(root)
-		if not root.is_dir():
-			bpy.context.window_manager.popup_menu(
-				lambda self, ctx: (self.layout.label(text="Not a folder.")) , 
-				title="Warning", 
-				icon='ERROR')
-			return {'CANCELLED'}
-
-		wm = context.window_manager
+		if self.filepath[-4:]!=".fbx":
+			self.filepath+=".fbx"
 		context.active_object.toolchain_settings.export_path = abspath(self.filepath)
 		return {'FINISHED'}
 
@@ -321,6 +367,7 @@ class OLI_OT_open_exported_file(bpy.types.Operator):
 
 	def execute(self, context):
 		fbx_file_path = context.scene.toolchain_settings.project_path + "\\" + context.active_object.toolchain_settings.export_path
+		print(fbx_file_path)
 		subprocess.Popen(fbx_file_path, shell=True)
 		return {'FINISHED'}
 
@@ -335,8 +382,108 @@ class OLI_OT_open_explorer_to_file(bpy.types.Operator):
 
 	def execute(self, context):
 		fbx_file_path = Path(context.scene.toolchain_settings.project_path) / context.active_object.toolchain_settings.export_path
-		subprocess.Popen(f'explorer /select,"{fbx_file_path	}"')
+		print(f'explorer /select,"{fbx_file_path}"')
+		subprocess.Popen(f'explorer /select,"{fbx_file_path}"')
 		return {'FINISHED'}
+
+# -----------------------------------------------------------------------
+# Send to External
+# -----------------------------------------------------------------------
+
+class OLI_OT_export_to_substance_painter(bpy.types.Operator):
+	"""Tooltip"""
+	bl_idname = "olitools.export_to_substance_painter"
+	bl_label = "Exports the active object to Substance Painter."
+
+	@classmethod
+	def poll(cls, context):
+		addon_prefs = context.preferences.addons["rapid_gamedev_toolchain"].preferences
+		if addon_prefs.painter_exe=="":
+			return False
+		if context.active_object is None:
+			return False
+		if context.active_object.type != "MESH":
+			return False
+		return True
+
+	def execute(self, context):
+		print(f"App Name: {__name__}")
+		addon_prefs = context.preferences.addons["rapid_gamedev_toolchain"].preferences
+
+		# Export FBX File
+		fbx_path = Path(context.scene.toolchain_settings.project_path) / context.active_object.toolchain_settings.export_path
+		# if context.scene.external_apps_settings.export_directory=="":
+		# 	fbx_path=Path(tempfile.gettempdir()) / "temp.fbx"
+		# else:
+		# 	fbx_path=Path(context.scene.external_apps_settings.export_directory) / (context.active_object.name.replace(".", "_")+".fbx")
+
+		bpy.ops.export_scene.fbx(
+			filepath=str(fbx_path),
+			use_selection=True
+			)
+
+		# Generate Command List
+		cmds=[]
+		cmds.append(addon_prefs.painter_exe)
+		cmds.append("--mesh")
+		cmds.append(fbx_path)
+		if context.scene.toolchain_settings.map_export_directory!="":
+			cmds.append("--export-path")
+			cmds.append(context.scene.toolchain_settings.map_export_directory)
+		for cmd in cmds:
+			print(f"'{cmd}'")
+		try:
+			subprocess.Popen(cmds)
+		except Exception as e:
+			bpy.context.window_manager.popup_menu(
+				lambda self, ctx: (self.layout.label(text="Error starting painter!")) , 
+				title="Error", 
+				icon='ERROR')
+		return {'FINISHED'}
+
+class OLI_OT_export_to_affinity_designer(bpy.types.Operator):
+	"""Tooltip"""
+	bl_idname = "olitools.export_to_affinity_designer"
+	bl_label = "Send UVs to Affinity Designer"
+
+	@classmethod
+	def poll(cls, context):
+		addon_prefs = context.preferences.addons["rapid_gamedev_toolchain"].preferences
+		if addon_prefs.designer_exe=="":
+			return False
+		if context.active_object is None:
+			return False
+		if context.active_object.type != "MESH":
+			return False
+		return True
+
+	def execute(self, context):
+		addon_prefs = context.preferences.addons["rapid_gamedev_toolchain"].preferences
+		if context.scene.toolchain_settings.uv_export_directory=="":
+			uv_path=Path(tempfile.gettempdir()) / "temp.svg"
+		else:
+			uv_path=Path(context.scene.toolchain_settings.uv_export_directory) / (context.active_object.name.replace(".", "_")+".svg")
+
+		res = context.scene.toolchain_settings.uv_resolution
+		bpy.ops.uv.export_layout(filepath=str(uv_path), mode='SVG', size=(res, res))
+
+		cmds=[]
+		cmds.append(addon_prefs.designer_exe)
+		cmds.append(uv_path)
+
+		try:
+			subprocess.Popen(cmds)
+		except Exception as e:
+			bpy.context.window_manager.popup_menu(
+				lambda self, ctx: (self.layout.label(text="Error starting designer!")) , 
+				title="Error", 
+				icon='ERROR')
+		return {'FINISHED'}
+
+
+# -----------------------------------------------------------------------
+# Panel
+# -----------------------------------------------------------------------
 
 class OLI_PT_export_to_directory(bpy.types.Panel):
 	bl_space_type="VIEW_3D"
@@ -354,8 +501,7 @@ class OLI_PT_export_to_directory(bpy.types.Panel):
 		if context.active_object==None:
 			return
 		box = self.layout.box()
-
-		
+		box.label(text="Export")
 		box.prop(context.scene.toolchain_settings, "project_path", text="Project")
 		sbox = box.split(factor=.9, align=True)
 		sbox.prop(context.object.toolchain_settings, "export_path", text="Object")
@@ -372,14 +518,30 @@ class OLI_PT_export_to_directory(bpy.types.Panel):
 		row.operator("olitools.open_exported_file", text="Open File", icon="FILE_3D")
 		row.operator("olitools.open_explorer_to_file", text="Open Explorer", icon="FILE_FOLDER")
 
+		# --- Send to External ---
+		box = self.layout.box()
+		box.label(text="Substance Painter")
+		# box.prop(context.scene.external_apps_settings, "export_directory", text="FBX Path")
+		box.prop(context.scene.toolchain_settings, "map_export_directory", text="Texture Path")
+		box.operator("olitools.export_to_substance_painter", text="Send Mesh to Painter")
+
+		box = self.layout.box()
+		box.label(text="Affinity Designer")
+		box.prop(context.scene.toolchain_settings, "uv_export_directory", text="UV Path")
+		box.prop(context.scene.toolchain_settings, "uv_resolution", text="File Res")
+		box.operator("olitools.export_to_affinity_designer", text="Send UV to Designer")
+
 
 blender_classes=[
+	OLI_AP_rapid_gamedev_toolchain_settings,
 	OLI_PG_export_directory_settings,
 	OLI_PG_export_object_settings,
 	OLI_OT_export_to_directory,
 	OLI_OT_object_export_file_path_window,
 	OLI_OT_open_explorer_to_file,
 	OLI_OT_open_exported_file,
+	OLI_OT_export_to_substance_painter,
+	OLI_OT_export_to_affinity_designer,
 	OLI_PT_export_to_directory
 ]
 
