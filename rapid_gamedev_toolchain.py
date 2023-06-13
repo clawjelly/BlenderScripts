@@ -156,13 +156,14 @@ class OLI_PG_export_directory_settings(PropertyGroup):
 	
 	def update_project_path(self, context):
 		value = context.scene.toolchain_settings.project_path
-		self["project_path"] = str(Path(abspath(value)).resolve())
+		# self["project_path"] = str(Path(abspath(value)).resolve())
+		self["project_path"] = abspath(value)
 
 	project_path: bpy.props.StringProperty(
 		name="Export Path",
 		description="The filepath of the exports.",
 		default="",
-		subtype="DIR_PATH",
+		subtype="NONE",
 		maxlen=0,
 		update = update_project_path
 	)
@@ -238,11 +239,87 @@ class OLI_PG_export_object_settings(PropertyGroup):
 	)
 
 # -----------------------------------------------------------------------
+# File Open Dialog Operators
+# -----------------------------------------------------------------------
+
+class OLI_OT_select_project_path(bpy.types.Operator):
+	"""Select Project Path"""
+	bl_idname = "olitools.select_project_path"
+	bl_label = "Select Project Path"
+
+	filter_glob: StringProperty(
+		default="*.*",
+		options={'HIDDEN'},
+		maxlen=255,  # Max internal buffer length, longer would be clamped.
+	)
+
+	filepath: StringProperty()
+	filename:  StringProperty()
+	directory:  StringProperty()
+
+	@classmethod
+	def poll(cls, context):
+		if context.active_object==None:
+			return False
+		return True
+
+	def invoke(self, context, _event):
+		"""This is called before any window opens."""
+		if context.scene.toolchain_settings.project_path=="":
+			self.filepath = context.scene.toolchain_settings.project_path
+		context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
+	def execute(self, context):
+		"""This is called after the window opened."""
+		context.scene.toolchain_settings.project_path = abspath(self.filepath)
+		return {'FINISHED'}
+
+class OLI_OT_object_export_file_path_window(bpy.types.Operator):
+	"""Set Export Path for the Object"""
+	bl_idname = "olitools.object_export_file_path_window"
+	bl_label = "Set Export Path"
+
+	filter_glob: StringProperty(
+		default="*.fbx",
+		options={'HIDDEN'},
+		maxlen=255,  # Max internal buffer length, longer would be clamped.
+	)
+
+	filepath: StringProperty()
+	filename:  StringProperty()
+	directory:  StringProperty()
+
+	@classmethod
+	def poll(cls, context):
+		if context.scene.toolchain_settings.project_path=="":
+			return False
+		if context.active_object==None:
+			return False
+		return True
+
+	def invoke(self, context, _event):
+		"""This is called before any window opens."""
+		if context.active_object.toolchain_settings.export_path=="":
+			self.filepath = context.scene.toolchain_settings.project_path + "\\" + context.active_object.name + ".fbx"
+		else:
+			self.filepath = context.scene.toolchain_settings.project_path + "\\" + context.active_object.toolchain_settings.export_path
+		context.window_manager.fileselect_add(self)
+		return {'RUNNING_MODAL'}
+
+	def execute(self, context):
+		"""This is called after the window opened."""
+		if self.filepath[-4:]!=".fbx":
+			self.filepath+=".fbx"
+		context.active_object.toolchain_settings.export_path = abspath(self.filepath)
+		return {'FINISHED'}
+
+# -----------------------------------------------------------------------
 # Export
 # -----------------------------------------------------------------------
 
 class OLI_OT_export_to_directory(bpy.types.Operator):
-	"""Exports the object to an FBX inside the stored directory. If this doesn't exists, it asks for a path."""
+	"""Exports the object to an FBX inside the stored directory."""
 	bl_idname = "export.to_directory"
 	bl_label = "Exports object to an FBX with defined settings."
 
@@ -314,50 +391,8 @@ class OLI_OT_export_to_directory(bpy.types.Operator):
 
 		return {'FINISHED'}
 
-class OLI_OT_object_export_file_path_window(bpy.types.Operator):
-	"""Opens a better file select window"""
-	bl_idname = "olitools.object_export_file_path_window"
-	bl_label = "Set Export Path"
-
-	# ExportHelper mixin class uses this
-	filename_ext = ".fbx"
-
-	filter_glob: StringProperty(
-		default="*.fbx",
-		options={'HIDDEN'},
-		maxlen=255,  # Max internal buffer length, longer would be clamped.
-	)
-
-	filepath: StringProperty()
-	filename:  StringProperty()
-	directory:  StringProperty()
-
-	@classmethod
-	def poll(cls, context):
-		if context.scene.toolchain_settings.project_path=="":
-			return False
-		if context.active_object==None:
-			return False
-		return True
-
-	def invoke(self, context, _event):
-		"""This is called before any window opens."""
-		if context.active_object.toolchain_settings.export_path=="":
-			self.filepath = context.scene.toolchain_settings.project_path + "\\" + context.active_object.name + ".fbx"
-		else:
-			self.filepath = context.scene.toolchain_settings.project_path + "\\" + context.active_object.toolchain_settings.export_path
-		context.window_manager.fileselect_add(self)
-		return {'RUNNING_MODAL'}
-
-	def execute(self, context):
-		"""This is called after the window opened."""
-		if self.filepath[-4:]!=".fbx":
-			self.filepath+=".fbx"
-		context.active_object.toolchain_settings.export_path = abspath(self.filepath)
-		return {'FINISHED'}
-
 class OLI_OT_open_exported_file(bpy.types.Operator):
-	"""Tooltip"""
+	"""Open the exported file with the default viewer."""
 	bl_idname = "olitools.open_exported_file"
 	bl_label = "Open File"
 
@@ -372,7 +407,7 @@ class OLI_OT_open_exported_file(bpy.types.Operator):
 		return {'FINISHED'}
 
 class OLI_OT_open_explorer_to_file(bpy.types.Operator):
-	"""Tooltip"""
+	"""Open an Explorer Window to the file"""
 	bl_idname = "olitools.open_explorer_to_file"
 	bl_label = "Show in Explorer"
 
@@ -502,7 +537,9 @@ class OLI_PT_export_to_directory(bpy.types.Panel):
 			return
 		box = self.layout.box()
 		box.label(text="Export")
-		box.prop(context.scene.toolchain_settings, "project_path", text="Project")
+		sbox = box.split(factor=.9, align=True)
+		sbox.prop(context.scene.toolchain_settings, "project_path", text="Project")
+		sbox.operator("olitools.select_project_path", text="", icon="FILE_FOLDER")
 		sbox = box.split(factor=.9, align=True)
 		sbox.prop(context.object.toolchain_settings, "export_path", text="Object")
 		sbox.operator("olitools.object_export_file_path_window", text="", icon="FILE_FOLDER")
@@ -536,8 +573,9 @@ blender_classes=[
 	OLI_AP_rapid_gamedev_toolchain_settings,
 	OLI_PG_export_directory_settings,
 	OLI_PG_export_object_settings,
-	OLI_OT_export_to_directory,
+	OLI_OT_select_project_path,
 	OLI_OT_object_export_file_path_window,
+	OLI_OT_export_to_directory,
 	OLI_OT_open_explorer_to_file,
 	OLI_OT_open_exported_file,
 	OLI_OT_export_to_substance_painter,
