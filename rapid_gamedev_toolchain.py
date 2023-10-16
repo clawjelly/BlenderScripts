@@ -1,6 +1,8 @@
 # -------------------------------------------------------------
 # Rapid Gamedev Toolchain
 # -------------------------------------------------------------
+# Version 0.3:
+# - Bugfix: Armatures
 # Version 0.2:
 # - Change to RGT
 # -------------------------------------------------------------
@@ -14,7 +16,7 @@ bl_info = {
 	"category": "Assets",
 }
 
-import json, subprocess
+import json, subprocess, re
 from pathlib import Path
 import bpy
 from bpy.path import abspath, relpath
@@ -30,8 +32,10 @@ from bpy.props import (
 	)
 
 # -----------------------------------------------------------------------
-# Functions
+# Base Functions
 # -----------------------------------------------------------------------
+
+exp_types = ["MESH", "ARMATURE", "EMPTY"]
 
 def select(*objs):
 	bpy.ops.object.select_all(action='DESELECT')
@@ -46,6 +50,10 @@ def get_hierarchy(*objs):
 		testobjs.extend(obj.children)
 		newobjs.append(obj)
 	return newobjs
+
+def clean_name(namestring):
+	rx = re.compile('\W+')
+	return rx.sub(' ', namestring).strip()
 
 def get_fbx_default_settings():
 	return {
@@ -114,8 +122,16 @@ def load_fbx_settings():
 	return settings
 
 def check_for_export(obj):
-	if obj.data.shape_keys!=None and len(obj.modifiers)!=0:
-		return f"- {obj.name} has shape keys and modifiers, shape keys won't be exported."
+	if obj.type not in exp_types:
+		return f"- {obj.name} needs to be exportable (e. g. a mesh, armature, empty...)."
+	if hasattr(obj.data, "shape_keys"):
+		if len(obj.modifiers)==1:
+			if obj.modifiers[0].type=="ARMATURE":
+				return ""
+			else:
+				return f"- {obj.name} has shape keys and modifiers, shape keys won't be exported."
+		if len(obj.modifiers)>1:
+			return f"- {obj.name} has shape keys and modifiers, shape keys won't be exported."
 	return ""
 
 # -----------------------------------------------------------------------
@@ -433,11 +449,15 @@ class OLI_OT_export_to_substance_painter(bpy.types.Operator):
 	@classmethod
 	def poll(cls, context):
 		addon_prefs = context.preferences.addons["rapid_gamedev_toolchain"].preferences
+		if context.scene.toolchain_settings.project_path=="":
+			return False
 		if addon_prefs.painter_exe=="":
 			return False
 		if context.active_object is None:
 			return False
 		if context.active_object.type != "MESH":
+			return False
+		if context.active_object.toolchain_settings.export_path=="":
 			return False
 		return True
 
@@ -497,7 +517,9 @@ class OLI_OT_export_to_affinity_designer(bpy.types.Operator):
 		if context.scene.toolchain_settings.uv_export_directory=="":
 			uv_path=Path(tempfile.gettempdir()) / "temp.svg"
 		else:
-			uv_path=Path(context.scene.toolchain_settings.uv_export_directory) / (context.active_object.name.replace(".", "_")+".svg")
+			svg_name = clean_name(context.active_object.name).replace(".", "_")+".svg"
+			print(f"SVG Name: {svg_name}")
+			uv_path=Path(context.scene.toolchain_settings.uv_export_directory) / svg_name
 
 		res = context.scene.toolchain_settings.uv_resolution
 		bpy.ops.uv.export_layout(filepath=str(uv_path), mode='SVG', size=(res, res))
@@ -523,7 +545,7 @@ class OLI_OT_export_to_affinity_designer(bpy.types.Operator):
 class OLI_PT_export_to_directory(bpy.types.Panel):
 	bl_space_type="VIEW_3D"
 	bl_region_type="UI"
-	bl_category="Tool"
+	bl_category="RGT"
 	bl_label="Rapid Gamedev Toolchain"
 
 	@classmethod
@@ -537,6 +559,7 @@ class OLI_PT_export_to_directory(bpy.types.Panel):
 			return
 		box = self.layout.box()
 		box.label(text="Export")
+		box.enabled = context.active_object.type in exp_types
 		sbox = box.split(factor=.9, align=True)
 		sbox.prop(context.scene.toolchain_settings, "project_path", text="Project")
 		sbox.operator("olitools.select_project_path", text="", icon="FILE_FOLDER")
