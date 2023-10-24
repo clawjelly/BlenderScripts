@@ -55,6 +55,12 @@ def clean_name(namestring):
 	rx = re.compile('\W+')
 	return rx.sub(' ', namestring).strip()
 
+def has_armature(obj):
+    for mod in obj.modifiers:
+        if mod.type=="ARMATURE":
+            return True
+    return False
+
 def get_fbx_default_settings():
 	return {
 		# "filepath" = 'C:\\UnityProjects\\Verteges\\Assets\\Vertify\\Models\\Accessories\\Hands.fbx',
@@ -218,7 +224,8 @@ class OLI_PG_export_object_settings(PropertyGroup):
 		obj_path = Path(context.active_object.toolchain_settings.export_path)
 		if context.scene.toolchain_settings.project_path!="":
 			prj_path = Path(context.scene.toolchain_settings.project_path)
-			self["export_path"] = str(obj_path.relative_to(prj_path))
+			if obj_path.is_relative_to(prj_path):
+				self["export_path"] = str(obj_path.relative_to(prj_path))
 
 	def settings_callback(self, context):
 		temp = [(key, key, "") for key, item in load_fbx_settings().items()]
@@ -367,8 +374,12 @@ class OLI_OT_export_to_directory(bpy.types.Operator):
 
 		# We want to export the full hierarchy. No idea what that isn't even considered in the exporter itself.
 		obj = context.active_object
-		select(*get_hierarchy(context.active_object))
-		
+
+		if has_armature(obj) and obj.parent and obj.parent.type=="ARMATURE":
+			select(*get_hierarchy(obj), obj.parent)
+		else:
+			select(*get_hierarchy(obj))
+
 		# Check for any export issues.
 		issues = []
 		for cobj in context.selected_objects:
