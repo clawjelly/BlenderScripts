@@ -1,3 +1,15 @@
+# ---------------------------------------------------------------------------
+# auto_reload_script.py
+# ---------------------------------------------------------------------------
+# Functionality for reloading scripts
+# ---------------------------------------------------------------------------
+# Version:
+# 1.0
+# - Initial version
+# 1.1
+# - Fixed context override
+# ---------------------------------------------------------------------------
+
 import os
 import bpy
 from bpy.app.handlers import persistent
@@ -5,8 +17,8 @@ from bpy.app.handlers import persistent
 bl_info = {
     "name": "auto reload scripts",
     "author": "Oliver Reischl <oliver@clawjelly.net>",
-    "version": (1, 0),
-    "blender": (2, 90, 0),
+    "version": (1, 1),
+    "blender": (4, 0, 0),
     "description": "Reloads Scripts",
     "category": "Scripting",
 }
@@ -14,12 +26,10 @@ bl_info = {
 def reload_scripts_callback():
     """ Check modified external scripts in the scene and update if possible """
 
-    # status=bpy.context.scene.get("auto_script_reload")
     if not bpy.context.scene.reloader_settings.is_active:
         print(f"Script Reload deactivated.")
         return(None)
 
-    # print(f"Save Check: {status}")
     ctx = bpy.context.copy()
     #Ensure  context area is not None
     ctx['area'] = ctx['screen'].areas[0]
@@ -33,16 +43,15 @@ def reload_scripts_callback():
             continue
 
         print(f"Script Reloader: Updating {t.name}")
-        # Change current context to contain a TEXT_EDITOR
-        oldAreaType = ctx['area'].type
+        # Create context override
         ctx['area'].type = 'TEXT_EDITOR'
         ctx['edit_text'] = t
         try:
-            bpy.ops.text.resolve_conflict(ctx, resolution='RELOAD')
+            with bpy.context.temp_override(**ctx):
+                bpy.ops.text.resolve_conflict(resolution='RELOAD')
+            pass
         except:
             print(f"Problem reloading {t.name}")
-        #Restore context
-        ctx['area'].type = oldAreaType
 
         if bpy.context.scene.reloader_settings.run_script:
             if t.name==bpy.context.scene.reloader_settings.scripts:
