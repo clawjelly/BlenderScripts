@@ -1,13 +1,21 @@
 # Blender Scripts
 This is a collection of various little scripts helping me through the day.
 
-## operator_delete_context.py
+## olitools.py
 
-Mimics my delete functionality from 3DSMax
+These are various operators that mimic the way other programs work to lessen the change load for me when jumping from progam to program.
 
-## custom_mode_setter.py
+- **olitools.delete_context**: Mimics my delete functionality from 3DSMax
+  - Edges and vertices are dissolved instead of deleted
+  - Faces are deleted
+- **olitools.custom_mode_setter**: Mimics my mode setting functionality from 3DSMax.
+- **olitools.select_full_hierarchy**: Selects children of selected objects all the way down the last child.
 
-Mimics my mode setting functionality from 3DSMax
+## unity_copy_paste.py
+
+![Unity_copy_paste](img/Unity_copy_paste.PNG)
+
+With this little script you can copy locations and rotations between blender and the [unity game engine](https://unity.com). It automatically converts between the differing coordinate systems.
 
 ## auto_reload_scripts.py
 
