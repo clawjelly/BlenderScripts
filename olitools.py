@@ -52,7 +52,7 @@ class OLI_OP_custom_mode_setter(bpy.types.Operator):
             return
 
         # mesh sub object modes
-        if obj.type=='MESH':
+        elif obj.type=='MESH':
             # In UV mode?
             if context.area.type=="IMAGE_EDITOR" and bpy.context.scene.tool_settings.use_uv_select_sync == False:
                 if mode==1:
@@ -77,13 +77,14 @@ class OLI_OP_custom_mode_setter(bpy.types.Operator):
             return
 
         # default behaviour
-        if mode==1:
-            try:
-                bpy.ops.object.mode_set(mode="EDIT")
-            except Exception as e:
-                pass
         else:
-            bpy.ops.object.mode_set(mode="OBJECT")
+            if mode==1:
+                try:
+                    bpy.ops.object.mode_set(mode="EDIT")
+                except Exception as e:
+                    pass
+            else:
+                bpy.ops.object.mode_set(mode="OBJECT")
 
     @classmethod
     def poll(cls, context):
@@ -113,14 +114,68 @@ class OLI_OT_delete_context(bpy.types.Operator):
                 bpy.ops.mesh.dissolve_edges()
             if face:
                 bpy.ops.mesh.delete(type='FACE')
-            return
+            return {'FINISHED'}
         bpy.ops.object.delete()
+        return {'FINISHED'}
+
+class OLI_OT_select_full_hierarchy(bpy.types.Operator):
+    """Selects the full hierarchy to the last child."""
+    bl_idname = "olitools.select_full_hierarchy"
+    bl_label = "Select full hierarchy"
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None
+
+    def execute(self, context):
+        selected_objects = context.selected_objects
+        obj_act = context.object
+
+        if context.object not in selected_objects:
+            selected_objects.append(context.object)
+
+        while len(selected_objects)>0:
+            obj = selected_objects.pop()
+            selected_objects.extend([child for child in obj.children])
+            obj.select_set(True)
+
+        return {'FINISHED'}
+
+class OLI_OT_increase_gizmo_size(bpy.types.Operator):
+    """Increases the base size of all gimzos on the viewport"""
+    bl_idname = "olitools.increase_gizmo_size"
+    bl_label = "Increase Gizmo Size"
+
+    def execute(self, context):
+        sizes = [10, 20, 30, 50, 70, 100, 140, 200]
+        current_size = context.preferences.view.gizmo_size
+        for size in sizes:
+            if size > current_size:
+                context.preferences.view.gizmo_size = size
+                break
+        return {'FINISHED'}
+
+class OLI_OT_decrease_gizmo_size(bpy.types.Operator):
+    """Increases the base size of all gimzos on the viewport"""
+    bl_idname = "olitools.decrease_gizmo_size"
+    bl_label = "Decrease Gizmo Size"
+
+    def execute(self, context):
+        sizes = [200, 140, 100, 70, 50, 30, 20, 10]
+        current_size = context.preferences.view.gizmo_size
+        for size in sizes:
+            if size < current_size:
+                context.preferences.view.gizmo_size = size
+                break
         return {'FINISHED'}
 
 
 blender_classes=[
     OLI_OP_custom_mode_setter,
-    OLI_OT_delete_context
+    OLI_OT_delete_context,
+    OLI_OT_select_full_hierarchy,
+    OLI_OT_increase_gizmo_size,
+    OLI_OT_decrease_gizmo_size
 ]
 
 def register():

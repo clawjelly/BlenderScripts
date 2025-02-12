@@ -29,7 +29,6 @@ from tempfile import gettempdir
 import bpy
 from bpy.path import abspath, relpath
 from bpy.types import PropertyGroup, AddonPreferences
-from bpy_extras.io_utils import ExportHelper
 from bpy.props import (
 	StringProperty, 
 	BoolProperty, 
@@ -187,7 +186,7 @@ class FBX_file_format(File_format):
 	def check_for_export(self, obj):
 		if obj.type not in exp_types:
 			return f"- {obj.name} needs to be exportable (e. g. a mesh, armature, empty...)."
-		if hasattr(obj.data, "shape_keys"):
+		if hasattr(obj.data, "shape_keys") and obj.data.shape_keys:
 			if len(obj.modifiers)==1:
 				if obj.modifiers[0].type=="ARMATURE":
 					return ""
